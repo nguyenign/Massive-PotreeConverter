@@ -30,6 +30,19 @@ class LocalStorage():
 	def is_dir(self, path):
 		return os.path.isdir(path)
 
+	def is_file(self, path):
+		return os.path.isfile(path)
+
+	def mkdir(self, path):
+		os.makedirs(path):
+
+	def dir_is_empty(self, path):
+	    d,f = self.list_dir(path)
+	    if len(d)==0 and len(f)==0:
+	        return True
+	    else
+	        return False
+
 	def read_file(self, filePath, mode="rb"):
 		filePath = self.rootFolder + filePath
 		return open(filePath, mode)
@@ -91,11 +104,15 @@ class HDFSStorage(LocalStorage):
 		## nooo ! to do change that !
 		return True
 
+	def mkdir(self, path):
+		return make_hdfs_dir(path)
+
 	def listdir(self, path):
 		res = list_from_hdfs(path)
 		items = res["FileStatuses"]["FileStatus"]
 		subDirs = []
 		files = []
+		
 		for item in items:
 			fp = item["pathSuffix"]
 			if item["type"] == "DIRECTORY":

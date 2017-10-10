@@ -45,3 +45,6 @@ def list_from_hdfs(hdfsPath):
 	fullPath = hdfsStorageRoot+hdfsPath
 	r = hdfs.list_dir(fullPath)
 	return r
+
+def make_hdfs_dir(hdfsPath):
+	return hdfs.make_dir(hdfsPath)
