@@ -57,11 +57,15 @@ RUN ln -s /opt/LAStools/bin/lasmerge /usr/local/sbin/lasmerge
 
 
 # INSTALL pycoeman
-RUN apt-get install -y python-pip python-dev build-essential libfreetype6-dev libssl-dev libffi-dev
-RUN pip install git+https://github.com/NLeSC/pycoeman
+#RUN apt-get install -y python-pip python-dev build-essential libfreetype6-dev libssl-dev libffi-dev
+RUN apt-get install -y python3-dev python3-numpy python3-numpy-dev python3-setuptools python3-numpy-dev python3-scipy build-essential libfreetype6-dev libssl-dev libffi-dev
+RUN apt-get install -y python3-pip
+RUN pip3 install git+https://github.com/NLeSC/pycoeman
 
 # INSTALL Massive-PotreeConverter
-RUN pip install git+https://github.com/NLeSC/Massive-PotreeConverter
+RUN pip3 install git+https://github.com/NLeSC/Massive-PotreeConverter
+
+
 
 # Create 3 volumes to be used when running the script. Ideally each run must be mounted to a different physical device
 VOLUME ["/data1"]

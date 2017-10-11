@@ -108,8 +108,9 @@ def run(inputFolder, outputFolder, tempFolder, extent, numberTiles, numberProcs)
     maxX = float(maxX)
     maxY = float(maxY)
 
-    if (maxX - minX) != (maxY - minY):
-        raise Exception('Error: Tiling requires that maxX-minX must be equal to maxY-minY!')
+    print("hello")
+   # if (maxX - minX) != (maxY - minY):
+   #     raise Exception('Error: Tiling requires that maxX-minX must be equal to maxY-minY!')
 
     inputFiles = utils.getFiles(inputFolder, recursive=True)
     numInputFiles = len(inputFiles)
