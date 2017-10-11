@@ -63,8 +63,9 @@ RUN apt-get install -y python3-pip
 RUN pip3 install git+https://github.com/NLeSC/pycoeman
 
 # INSTALL Massive-PotreeConverter
-RUN pip3 install git+https://github.com/NLeSC/Massive-PotreeConverter
-
+#RUN pip3 install git+https://github.com/NLeSC/Massive-PotreeConverter
+ADD . /MassivePC
+RUN python3 /MassivePC/setup.py
 
 
 # Create 3 volumes to be used when running the script. Ideally each run must be mounted to a different physical device
