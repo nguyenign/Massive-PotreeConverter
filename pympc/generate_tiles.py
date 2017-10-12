@@ -108,7 +108,7 @@ def run(inputFolder, outputFolder, tempFolder, extent, numberTiles, numberProcs)
     maxX = float(maxX)
     maxY = float(maxY)
 
-    print("hello")
+   # print("hello")
    # if (maxX - minX) != (maxY - minY):
    #     raise Exception('Error: Tiling requires that maxX-minX must be equal to maxY-minY!')
 
