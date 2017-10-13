@@ -15,6 +15,19 @@ class LocalStorage():
 		fd = open(filePath, 'rb')
 		self.save_file_handler(fd, destFilePath).close()		
 
+	def save_dir(self, localDir, remoteDir):
+		toSend = os.listdir(localDir)
+		while len(toSend):
+			newToSend = []
+			for item in toSend:
+				itemPath = os.path.join(localDir, item)
+				if os.path.isfile(itemPath):
+					self.save_file(itemPath, os.path.join(remoteDir, item))
+				if os.path.isdir(itemPath):
+					self.mkdir(os.path.join(remoteDir, item))
+					nList = os.listdir(itemPath)
+					newToSend += list(map(lambda x: os.path.join(item, x), nList))
+			toSend = newToSend
 
 	def save_file_handler(self, fileHandler, destFilePath):
 		try:

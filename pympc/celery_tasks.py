@@ -5,6 +5,8 @@ import helpers.Storage.storage as storage
 import os
 import shutil
 from pympc.generate_tiles import getTileIndex, getTileName, runPDALSplitter
+from pympc.utils import shellExecute
+
 storageBackend = storage.getStorageBackend()
 
 @task(name='getPCFileDetails', bind=True)
@@ -59,7 +61,7 @@ def generateTilesFromOneFile(self, inputFile, minX, minY, maxX, maxY, outputFold
                 localTileFolder = localoutTmp + "/" + d
                 storageBackend.mkdir(outputFolder + "/" + d)
                 for f in os.listdir(localTileFolder):
-                    
+
                     localPath = os.path.join(localTileFolder, f)
                     remotePath = os.path.join(outputFolder, d, f)
                     print("%s -> %s"  %(localPath, remotePath))
@@ -69,3 +71,37 @@ def generateTilesFromOneFile(self, inputFile, minX, minY, maxX, maxY, outputFold
         print("error tiling")        
     shutil.rmtree(localTmpFolder)
     return (inputFile, fCount)
+
+@task(name="potreeConverter", bind=True)
+def potreeConverter(self, tileFolderPath, outputFolderPath, outputFormat, levels, spacing, extent):
+    task_id = self.request.id
+    localTmpFolder = "/tmp/" + str(task_id)
+    try:
+        localFolderPath = localTmpFolder + "/" + tileFolderPath    
+        localOutFolderPath = localTmpFolder + "/" + outputFolderPath
+        
+        os.makedirs(localFolderPath)
+        # create an output directory (tile_potree)
+        os.makedirs(localOutFolderPath)
+        
+        # get the tileFolderPath locally
+        
+        for tileFile in storageBackend.listdir(tileFolderPath)[1]:
+            storageBackend.get_file(destFilePath=os.path.join(tileFolderPath, tileFile), filePath=os.path.join(localFolderPath, tileFile))
+
+
+        # start potreeConverter --source localTileFolderPath --outdir localOutDir
+        # PotreeConverter is started in the directory containing the tiles subfolders
+        out = shellExecute('/opt/PotreeConverter/build/PotreeConverter/PotreeConverter '+  
+                        ' --outdir ' + localOutFolderPath + 
+                        ' --levels ' + str(levels) + 
+                        ' --output-format ' + str(outputFormat).upper() + 
+                        ' --source ' + localFolderPath + 
+                        ' --spacing ' + str(spacing) + 
+                        ' --aabb "' + extent + '"')
+        print("Sending %s -> %s" % (localOutFolderPath, outputFolderPath))
+        storageBackend.save_dir(localOutFolderPath, outputFolderPath)    
+    except Exception as e:
+        print(e)           # __str__ allows args to be printed directly
+    finally:
+        shutil.rmtree(localTmpFolder)

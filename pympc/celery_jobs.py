@@ -126,3 +126,4 @@ def generateTiles(inputFolder, outputFolder, tempFolder, extent, numberTiles):
 
     storageBackend.save_file("/tmp/tiles.js", outputFolder + "/tiles.js")
     os.remove("/tmp/tiles.js")
+
