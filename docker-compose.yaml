@@ -1,0 +1,22 @@
+version: "2"
+volumes:    
+  datavolume: {}
+services:
+  redis:
+    networks: 
+      - mynet
+    image: redis:alpine
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    networks: 
+      - mynet
+    ports:
+     - "15672:15672"
+
+networks:
+  mynet:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.4.0.0/16

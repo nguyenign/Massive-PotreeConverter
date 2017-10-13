@@ -3,6 +3,7 @@ from .hdfsConf import hdfs, hdfsStorageRoot
 from .hdfs import * 
 
 storageBackend = os.getenv("STORAGE_BACKEND", "local")
+from functools import partial
 
 class LocalStorage():
 	name = "local"
@@ -11,62 +12,88 @@ class LocalStorage():
 		self.rootFolder = os.getenv("STORAGE_ROOTPATH", '/tmp/')
 
 	def save_file(self, filePath, destFilePath):		
-		fd = open(filePath)
+		fd = open(filePath, 'rb')
 		self.save_file_handler(fd, destFilePath).close()		
 
 
 	def save_file_handler(self, fileHandler, destFilePath):
-		destFilePath = self.rootFolder + destFilePath
-		fileDirectory = os.path.dirname(destFilePath)
-		if fileDirectory != "":
-			if not os.path.exists(fileDirectory):
-				os.makedirs(fileDirectory)
-		fdest = open(destFilePath, "wb")
-		fileHandler.seek(0)
-		fdest.write(fileHandler.read())
-		fdest.close()
+		try:
+			destFilePath = self.rootFolder + destFilePath
+			fileDirectory = os.path.dirname(destFilePath)
+			if fileDirectory != "":
+				if not os.path.exists(fileDirectory):
+					os.makedirs(fileDirectory)
+			fdest = open(destFilePath, "wb")
+			fileHandler.seek(0)
+			fdest.write(fileHandler.read())
+			fdest.close()
+		except:
+			raise("problem saving the file")
 		return fileHandler
 
 	def is_dir(self, path):
-		return os.path.isdir(path)
+		return os.path.isdir(self.rootFolder + path)
 
 	def is_file(self, path):
-		return os.path.isfile(path)
+		return os.path.isfile(self.rootFolder + path)
 
 	def mkdir(self, path):
-		os.makedirs(path):
+		if not os.path.exists(self.rootFolder + path):
+			try:
+				os.makedirs(self.rootFolder + path)
+			except:
+				pass
 
 	def dir_is_empty(self, path):
-	    d,f = self.list_dir(path)
+	    d,f = self.listdir(path)
 	    if len(d)==0 and len(f)==0:
 	        return True
-	    else
+	    else:
 	        return False
 
 	def read_file(self, filePath, mode="rb"):
 		filePath = self.rootFolder + filePath
 		return open(filePath, mode)
 
-	def get_file(self, destFilePath, filePath):
+	def get_file(self, destFilePath, filePath, start=0, length=-1):
 		fd = self.read_file(destFilePath)
 		fh = open(filePath, "wb")
-		fh.write(fd.read())
+		fd.seek(start,0)
+		
+		eaten=0		
+		chunkSize = 1024
+		eat = True
+
+		while eat:
+			if (eaten + chunkSize > length) and (length > -1):
+				chunkSize = length - eaten
+			buf = fd.read(chunkSize)
+			fh.write(buf)
+			eaten += chunkSize
+			if eaten == length and length != -1:
+				eat = False
+			else:
+				eat = buf
+
 		fd.close()
 		fh.close()
+
 		return True
 
 	def listdir(self, path):
-		items = os.listdir(path)
+		items = os.listdir(self.rootFolder + path)
 		subDirs = []
 		files = []
 		for item in items:
-			fp = os.path.join(path, item)
-			if os.isdir(fp):
+			fp = os.path.join(self.rootFolder + path, item)
+			if os.path.isdir(fp):
 				subDirs.append(item)
-			if os.isfile(fp):
+			if os.path.isfile(fp):
 				files.append(item)
 		return subDirs, files
 
+    # in this function, do not append the root path as we are not dealing with
+    # os function. everything should be relative to rootFolder
 	def walk(self, rootPath, maxDepth=-1):
 		currentDepth = 0
 		subFolderToVisit = [rootPath]

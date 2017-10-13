@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Various methods reused in main scripts"""
 import sys, os, glob, subprocess, struct, numpy, math, multiprocessing
+from pympc.helpers.LAS_headerReader import lasHandler
 
 PC_FILE_FORMATS = ['las','laz']
 OCTTREE_NODE_NUM_CHILDREN = 8
@@ -68,8 +69,20 @@ returns a list with only one element, the given file """
         files.extend(glob.glob(os.path.join(inputElement,'*.' + ext.upper()),recursive = recursive))
     return list(set(files))
 
-
 def getPCFileDetails(absPath):
+    lh = lasHandler(absPath)
+    count = None
+    (minX, minY, minZ, maxX, maxY, maxZ) = (None, None, None, None, None, None)
+    (scaleX, scaleY, scaleZ) = (None, None, None)
+    (offsetX, offsetY, offsetZ) = (None, None, None)
+    minX, minY, minZ = lh.min
+    maxX, maxY, maxZ = lh.max
+    scaleX, scaleY, scaleZ = lh.scaleFactor
+    offsetX, offsetY, offsetZ = lh.offset
+    count = lh.numberOfPoints
+    return (count, minX, minY, minZ, maxX, maxY, maxZ, scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ)
+
+def getPCFileDetailsOld(absPath):
     """ Get the details (count numPoints and extent) of a LAS/LAZ file (using LAStools, hence it is fast)"""
     count = None
     (minX, minY, minZ, maxX, maxY, maxZ) = (None, None, None, None, None, None)

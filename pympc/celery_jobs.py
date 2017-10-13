@@ -3,17 +3,20 @@ import helpers.Storage.storage as storage
 from celery import Celery, states, Signature, result, chain, group
 from celery.result import AsyncResult, GroupResult
 
-from celery_app import qmapp
-
+from pympc.tasksManagement import qmApp
+import sys
 storageBackend = storage.getStorageBackend()
+import math
+import os
+import json
 
 def getPCFolderDetails(absPath):
-	    """ Get the details (count numPoints and extent) of a folder with LAS/LAZ files (using LAStools)"""
+    """ Get the details (count numPoints and extent) of a folder with LAS/LAZ files (using LAStools)"""
     tcount = 0
     (tminx, tminy, tminz, tmaxx, tmaxy, tmaxz) =  (None, None, None, None, None, None)
     (tscalex, tscaley, tscalez) = (None, None, None)
 
-    if storageBackend.isdir(absPath):
+    if storageBackend.is_dir(absPath):
         inputFiles = storageBackend.walk(absPath)
     else:
         inputFiles = [absPath,]
@@ -26,15 +29,16 @@ def getPCFolderDetails(absPath):
 
 
     for i in range(numInputFiles):
-        tasksQueue.append(qmapp.Signature(name="getPCFileDetails", args=(inputFiles[i],)))
+        tasksQueue.append(Signature("getPCFileDetails", args=(inputFiles[i],)))
     #for i in range(numProc): #we add as many None jobs as numProc to tell them to terminate (queue is FIFO)
     #    tasksQueue.put(None)
-
-    gResults = group(tasksQueue)
-    details = res.get()
-
+    print(tasksQueue)
+    gResults = group(tasksQueue)()
+    details = gResults.get()
+    print(details)
     for i in range(numInputFiles):
         sys.stdout.write('\r')
+        print(details[i])
         (count, minx, miny, minz, maxx, maxy, maxz, scalex, scaley, scalez, _, _, _) = details[i]
         if i == 0:
             (tscalex, tscaley, tscalez) = (scalex, scaley, scalez)
@@ -96,16 +100,16 @@ def generateTiles(inputFolder, outputFolder, tempFolder, extent, numberTiles):
 
     # Add tasks/inputFiles
     for i in range(numInputFiles):
-        tasksQueue.append(qmapp.Signature("makeTile", args=(inputFiles[i],minX, minY, maxX, maxY, outputFolder, axisTiles,)))
+        tasksQueue.append(Signature("makeTile", args=(inputFiles[i],minX, minY, maxX, maxY, outputFolder, axisTiles,)))
 
-    job = group(tasksQueue)
+    job = group(tasksQueue)()
     res = job.get()
 
 
     # Get all the results (actually we do not need the returned values)
     numPoints = 0
     for i in range(numInputFiles):
-        (inputFile, inputFileNumPoints) = res.results[i]
+        (inputFile, inputFileNumPoints) = res[i]
         numPoints += inputFileNumPoints
         print ('Completed %d of %d (%.02f%%)' % (i+1, numInputFiles, 100. * float(i+1) / float(numInputFiles)))
 

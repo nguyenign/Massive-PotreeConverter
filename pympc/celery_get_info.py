@@ -4,10 +4,10 @@
 
 import argparse, traceback, sys, math, time, os
 from pympc import utils
-import sys
+from pympc import celery_jobs
 
 def run(inputFolder, numberProcs, targetTile, targetSize):
-    (_, tcount, tminx, tminy, tminz, tmaxx, tmaxy, tmaxz, _, _, _) = utils.getPCFolderDetails(inputFolder)
+    (_, tcount, tminx, tminy, tminz, tmaxx, tmaxy, tmaxz, _, _, _) = celery_jobs.getPCFolderDetails(inputFolder)
     #convert to integers
     tminx = int(math.ceil(tminx))
     tminy = int(math.ceil(tminy))

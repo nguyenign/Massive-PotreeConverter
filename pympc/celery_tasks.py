@@ -1,52 +1,71 @@
 import utils
 import celery
+from celery import task
 import helpers.Storage.storage as storage
 import os
 import shutil
-from pympc.generate_tiles import getTileIndex, runPDALSplitter
-
+from pympc.generate_tiles import getTileIndex, getTileName, runPDALSplitter
 storageBackend = storage.getStorageBackend()
 
-@task(name='getPCFileDetails')
-def getPCFileDetails(absPath, removeTmp=True, tmpFile='/tmp/pcFile'):
-	storageBackend.get_file(absPath, tmpFile)
-	details = utils.getPCFileDetails(tmpFile)
-	if removeTmp:
-		os.remove(tmpFile)
-	return details
+@task(name='getPCFileDetails', bind=True)
+def getPCFileDetails(self, absPath, removeTmp=True, ):
 
-@task(name="makeTile")
-def generateTilesFromOneFile(inputFile, minX, minY, maxX, maxY, outputFolder, axisTiles, task_id=None):
+    base, ext = os.path.splitext(absPath)
+    tmpFile = "/tmp/" + str(self.request.id) + ext
+    storageBackend.get_file(destFilePath=absPath, filePath=tmpFile, length=4096)
+
+    details = utils.getPCFileDetails(tmpFile)
+    print(details)
+    if removeTmp:
+        os.remove(tmpFile)
+    return details
+
+@task(name="makeTile", bind=True)
+def generateTilesFromOneFile(self, inputFile, minX, minY, maxX, maxY, outputFolder, axisTiles):
+    task_id = self.request.id
     # Get number of points and BBOX of this file
     localTmpFolder = "/tmp/" + str(task_id)
-    localInputFile = localTmpFolder + "/" + os.basename(inputFile)
-    localPdalTmp = localTmpFolder + "/pdal"
-    localoutTmp = localTmpFolder = "/out"
-    os.makedirs(localTmpFolder)
+    try:
+        localInputFile = localTmpFolder + "/" + os.path.basename(inputFile)
+        localPdalTmp = localTmpFolder + "/pdal"
+        localoutTmp = localTmpFolder + "/out"
+        print(localTmpFolder)
+        os.makedirs(localTmpFolder)
 
-    (fCount, fMinX, fMinY, _, fMaxX, fMaxY, _, _, _, _, _, _, _) = getPCFileDetails(inputFile, removeTmp=False, tmpFile=localInputFile)
-    print ('Processing', os.path.basename(inputFile), fCount, fMinX, fMinY, fMaxX, fMaxY)
-    # For the four vertices of the BBOX we get in which tile they should go
-    posMinXMinY = getTileIndex(fMinX, fMinY, minX, minY, maxX, maxY, axisTiles)
-    posMinXMaxY = getTileIndex(fMinX, fMaxY, minX, minY, maxX, maxY, axisTiles)
-    posMaxXMinY = getTileIndex(fMaxX, fMinY, minX, minY, maxX, maxY, axisTiles)
-    posMaxXMaxY = getTileIndex(fMaxX, fMaxY, minX, minY, maxX, maxY, axisTiles)
+        storageBackend.get_file(destFilePath=inputFile, filePath=localInputFile)
 
-    if (posMinXMinY == posMinXMaxY) and (posMinXMinY == posMaxXMinY) and (posMinXMinY == posMaxXMaxY):
-        # If they are the same the whole file can be directly copied to the tile
-        tileFolder = outputFolder + '/' + getTileName(*posMinXMinY)
-        if not storageBackend.is_dir(tileFolder):
-            storageBackend.mkdir(tileFolder)
-        storageBackend.send_file(localInputFile, tileFolder + "/" + os.path.basename(inputFile))
-    else:
-        # If not, we run PDAL gridder to split the file in pieces that can go to the tiles
-        tGCount = runPDALSplitter(task_id, localInputFile, localoutTmp, localPdalTmp, minX, minY, maxX, maxY, axisTiles)
-        if tGCount != fCount:
-            print ('WARNING: split version of ', inputFile, ' does not have same number of points (', tGCount, 'expected', fCount, ')')
-        for d in os.listdir(localoutTmp): #d is tilefolder
-        	localTileFolder = localoutTmp + "/" + d
-        	storageBackend.mkdir(outputFolder + "/" + d)
-        	for f in os.listdir(absPath):
-        		storageBackend.send_file(os.path.join(localTileFolder, f), os.path.join(outputFolder, d, f))
+        (fCount, fMinX, fMinY, _, fMaxX, fMaxY, _, _, _, _, _, _, _) =  utils.getPCFileDetails(localInputFile)
+        print ('Processing', os.path.basename(inputFile), fCount, fMinX, fMinY, fMaxX, fMaxY)
+        # For the four vertices of the BBOX we get in which tile they should go
+        posMinXMinY = getTileIndex(fMinX, fMinY, minX, minY, maxX, maxY, axisTiles)
+        posMinXMaxY = getTileIndex(fMinX, fMaxY, minX, minY, maxX, maxY, axisTiles)
+        posMaxXMinY = getTileIndex(fMaxX, fMinY, minX, minY, maxX, maxY, axisTiles)
+        posMaxXMaxY = getTileIndex(fMaxX, fMaxY, minX, minY, maxX, maxY, axisTiles)
+
+        if (posMinXMinY == posMinXMaxY) and (posMinXMinY == posMaxXMinY) and (posMinXMinY == posMaxXMaxY):
+            # If they are the same the whole file can be directly copied to the tile
+            tileFolder = outputFolder + '/' + getTileName(*posMinXMinY)
+            if not storageBackend.is_dir(tileFolder):
+                storageBackend.mkdir(tileFolder)
+            print("%s -> %s"  %(localInputFile, tileFolder + "/" + os.path.basename(inputFile)))
+            storageBackend.save_file(filePath=localInputFile, destFilePath=tileFolder + "/" + os.path.basename(inputFile))
+        else:
+
+            # If not, we run PDAL gridder to split the file in pieces that can go to the tiles
+            tGCount = runPDALSplitter(task_id, localInputFile, localoutTmp, localPdalTmp, minX, minY, maxX, maxY, axisTiles)
+            if tGCount != fCount:
+                print ('WARNING: split version of ', inputFile, ' does not have same number of points (', tGCount, 'expected', fCount, ')')
+            for d in os.listdir(localoutTmp): #d is tilefolder
+                localTileFolder = localoutTmp + "/" + d
+                storageBackend.mkdir(outputFolder + "/" + d)
+                for f in os.listdir(localTileFolder):
+                    
+                    localPath = os.path.join(localTileFolder, f)
+                    remotePath = os.path.join(outputFolder, d, f)
+                    print("%s -> %s"  %(localPath, remotePath))
+                    storageBackend.save_file(localPath, remotePath)
+            
+    except:
+        print("error tiling")        
     shutil.rmtree(localTmpFolder)
     return (inputFile, fCount)

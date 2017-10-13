@@ -23,11 +23,11 @@ except:
     sys.exit(1)
 
 # Fourth we see if pycoeman has been manually installed and is in PYTHONPATH
-try:
-    import pycoeman
-except:
-    print('Installation could not be done: pycoeman could not be found.')
-    sys.exit(1)
+#try:
+#    import pycoeman
+#except:
+#    print('Installation could not be done: pycoeman could not be found.')
+#    sys.exit(1)
 
 
 setup(
@@ -40,12 +40,11 @@ setup(
     author_email='o.rubi@esciencecenter.nl',
     url='https://github.com/NLeSC/Massive-PotreeConverter',
     install_requires=[
-          'lxml', 'pycoeman', 'numpy'],
+          'lxml', 'numpy'],
     entry_points={
         'console_scripts': [
-            'mpc-create-config-pycoeman=pympc.create_pycoeman_config_run_massive_potree_converter:main',
-            'mpc-info=pympc.get_info:main',
-            'mpc-tiling=pympc.generate_tiles:main',
+            'mpc-info=pympc.celery_get_info:main',
+            'mpc-tiling=pympc.celery_generate_tiles:main',
             'mpc-merge=pympc.merge_potree:main',
             'mpc-merge-all=pympc.merge_potree_all:main',
             'mpc-wkt=pympc.get_wkt:main',
